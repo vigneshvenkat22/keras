@@ -114,7 +114,8 @@ class SharpnessAwareMinimization(Model):
     config = copy.deepcopy(config)
     model = deserialize_layer(
         config.pop("model"), custom_objects=custom_objects)
-    return cls(model, **config)
+    config["model"] = model
+    return super().from_config(config, custom_objects)
 
   def _gradients_order2_norm(self, gradients):
     norm = tf.norm(

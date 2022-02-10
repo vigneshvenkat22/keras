@@ -18,6 +18,7 @@
 import copy
 from keras import losses as losses_mod
 from keras import metrics as metrics_mod
+from keras.saving import experimental_saving
 from keras.utils import generic_utils
 from keras.utils import losses_utils
 from keras.utils import tf_utils
@@ -100,7 +101,11 @@ class Container:
 class LossesContainer(Container):
   """A container class for losses passed to `Model.compile`."""
 
-  def __init__(self, losses, loss_weights=None, output_names=None):
+  def __init__(self,
+               losses,
+               loss_weights=None,
+               output_names=None,
+               loss_metric=None):
     super(LossesContainer, self).__init__(output_names=output_names)
 
     # Keep user-supplied values untouched for recompiling and serialization.
@@ -110,8 +115,31 @@ class LossesContainer(Container):
     self._losses = losses
     self._loss_weights = loss_weights
     self._per_output_metrics = None  # Per-output losses become metrics.
-    self._loss_metric = metrics_mod.Mean(name='loss')  # Total loss.
+
+    # Total loss.
+    self._loss_metric = loss_metric or metrics_mod.Mean(name='loss')
     self._built = False
+
+  def get_config(self):
+    # In case `self._losses` is a single string where we convert it to a list.
+    self._losses = tf.nest.flatten(self._losses)
+    return {
+        'losses':
+            experimental_saving.list_of_config_dict_from_loss(self),
+        'loss_metric':
+            experimental_saving.config_dict_from_object(self._loss_metric)
+    }
+
+  @classmethod
+  def deserialize(cls, obj_struct):
+    if isinstance(obj_struct, list):
+      return [cls.deserialize(item) for item in obj_struct]
+    return experimental_saving.object_from_config_dict(obj_struct)
+
+  @classmethod
+  def from_config(cls, config):
+    config = {key: cls.deserialize(value) for key, value in config.items()}
+    return cls(**config)
 
   @property
   def metrics(self):
