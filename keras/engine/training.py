@@ -417,7 +417,7 @@ class Model(base_layer.Layer, version_utils.ModelVersionSelector):
           x = base_layer_utils.generate_placeholders_from_shape(input_shape)
 
         kwargs = {}
-        call_signature = self._call_full_argspec
+        call_signature = self._call_spec.full_argspec
         call_args = call_signature.args
         # Exclude `self`, `inputs`, and any argument with a default value.
         if len(call_args) > 2:
@@ -466,7 +466,7 @@ class Model(base_layer.Layer, version_utils.ModelVersionSelector):
       copied_args = copy.copy(args)
       copied_kwargs = copy.copy(kwargs)
 
-      inputs, copied_args, copied_kwargs = self._split_out_first_arg(
+      inputs, copied_args, copied_kwargs = self._call_spec.split_out_first_arg(
           copied_args, copied_kwargs)
 
       def _convert_to_graph_inputs(x):
@@ -2925,7 +2925,7 @@ class Model(base_layer.Layer, version_utils.ModelVersionSelector):
                      '`get_layer`.')
 
   @tf.__internal__.tracking.no_automatic_dependency_tracking
-  def _set_save_spec(self, inputs, args=None, kwargs=None):
+  def _set_save_spec(self, inputs, args=None, kwargs=None, override=False):
     """Defines the save spec so that serialization is able to trace model call.
 
     The TensorSpecs of the call function `inputs`, `args`, and `kwargs` are
@@ -2938,8 +2938,10 @@ class Model(base_layer.Layer, version_utils.ModelVersionSelector):
       inputs: possibly nested inputs passed into the call function.
       args: a list of positional arguments passed into call.
       kwargs: a dictionary of keyword arguments passed into call.
+      override: bool, if `True`, overrides the current save spec even if it is
+        already set. Defaults to `False`.
     """
-    if self._saved_model_inputs_spec is not None:
+    if self._saved_model_arg_spec is not None and not override:
       return  # Already set.
     args = args or []
     kwargs = kwargs or {}
@@ -3032,7 +3034,7 @@ class Model(base_layer.Layer, version_utils.ModelVersionSelector):
   def _check_call_args(self, method_name):
     """Check that `call()` has only one positional arg."""
     # Always allow first arg, regardless of arg name.
-    fullargspec = self._call_full_argspec
+    fullargspec = self._call_spec.full_argspec
     if fullargspec.defaults:
       positional_args = fullargspec.args[:-len(fullargspec.defaults)]
     else:
