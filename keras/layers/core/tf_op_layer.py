@@ -63,8 +63,8 @@ class ClassMethod(Layer):
     # (e.g., don't unnest lists that contain one element)
     self._preserve_input_structure_in_config = True
 
-    self._expects_training_arg = False
-    self._expects_mask_arg = False
+    self._call_spec.expects_training_arg = False
+    self._call_spec.expects_mask_arg = False
 
   def call(self, args, kwargs):
     return getattr(self.cls_ref, self.method_name)(*args, **kwargs)

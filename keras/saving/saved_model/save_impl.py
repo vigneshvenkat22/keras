@@ -480,7 +480,7 @@ class LayerCallCollection:
       return (utils.get_training_arg(self._training_arg_index, args, kwargs)
               is not None)
     else:
-      return self.layer._call_arg_was_passed(  # pylint: disable=protected-access
+      return self.layer._call_spec.arg_was_passed(  # pylint: disable=protected-access
           'training',
           args,
           kwargs,
